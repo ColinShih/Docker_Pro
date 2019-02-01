@@ -1,0 +1,37 @@
+FROM 192.168.149.132/colinrepo/centos7:v1.1
+MAINTAINER ColinShih <szl_colin@163.com>
+#RUN yum install epel-release gcc gcc-c++ -y && \
+RUN yum install -y make gd-devel libxml2-devel \
+    libcurl-devel libjpeg-devel libpng-devel openssl-devel \
+    libmcrypt-devel libxslt-devel libtidy-devel autoconf \
+    iproute net-tools telnet wget curl && \
+    yum clean all && \
+    rm -rf /var/cache/yum/*
+RUN groupadd -f www && useradd www -g www -M -s /sbin/nologin 
+
+ENV PHP_VERSION 5.6.36
+WORKDIR /usr/src
+RUN wget http://docs.php.net/distributions/php-$PHP_VERSION.tar.gz && \
+    tar zxf php-$PHP_VERSION.tar.gz && \
+    cd php-$PHP_VERSION && \
+    ./configure --prefix=/usr/local/php \
+    --with-config-file-path=/usr/local/php/etc \
+    --enable-fpm --enable-opcache \
+    --with-mysql --with-mysqli --with-pdo-mysql \
+    --with-openssl --with-zlib --with-curl --with-gd \
+    --with-jpeg-dir --with-png-dir --with-freetype-dir \
+    --enable-mbstring --with-mcrypt --enable-hash && \
+    make -j 4 && make install && \
+#    cp php.ini-production /usr/local/php/etc/php.ini && \
+#    cp sapi/fpm/php-fpm.conf /usr/local/php/etc/php-fpm.conf && \
+#    sed -i "90a \daemonize = no" /usr/local/php/etc/php-fpm.conf && \
+    mkdir /usr/local/php/log && \
+    cd /usr/src && rm -rf php* && \
+    ln -sf /usr/share/zoneinfo/Asia/Shanghai /etc/localtime
+
+ENV PATH $PATH:/usr/local/php/sbin:/usr/local/php/bin
+COPY php.ini /usr/local/php/etc/
+COPY php-fpm.conf /usr/local/php/etc/
+WORKDIR /usr/local/php
+EXPOSE 9000
+CMD ["php-fpm"]

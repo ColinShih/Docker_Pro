@@ -1,0 +1,39 @@
+version: '2'
+services:
+  nginx:
+    image: 192.168.149.132/colinrepo/nginx1.15:v1.2
+    container_name: lnmp_nginx
+    restart: always
+    ports:
+        - "8000:80"
+    links:
+        - php
+    volumes:
+        - "/web/html:/usr/local/nginx/html"
+    networks:
+        - lnmp
+  php:
+    image: 192.168.149.132/colinrepo/php5.6:v1.1
+    container_name: lnmp_php
+    restart: always
+    ports:
+        - "9000"
+    volumes:
+        - "/web/html:/usr/local/nginx/html"
+    networks:
+        - lnmp
+  db:
+    image: 192.168.149.132/colinrepo/mysql5.6:v1.2
+    container_name: lnmp_mysql
+    ports:
+        - "3306:3306"
+    volumes:
+        - "/data/mysql5.6:/data/mysql/data"
+    networks:
+        - lnmp
+    environment:
+        MYSQL_ROOT_PASSWORD: 1234
+  
+networks:
+  lnmp:
+
