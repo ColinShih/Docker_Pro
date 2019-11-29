@@ -1,0 +1,52 @@
+// harbor url
+def registry = "192.168.149.132"
+// project info
+def project = "${sourceBranch}"
+def app_name = "php-demo"
+def image_name = "${registry}/${project}/${app_name}:${BUILD_TIMESTAMP}_${BUILD_NUMBER}"
+def git_address = "git@192.168.149.141:colin/php-demo.git"
+// 认证
+def git_auth = "767e4478-faa8-48ea-b5c2-8af9a204191d"
+def docker_registry_auth = "fee1dfe2-f06b-4053-97e8-c076e208cf03"
+def k8s_auth = "2e3b1304-90c3-409c-a5f8-a4ee4425262e"
+def secret_name = "registry-pull-secret"
+
+podTemplate(label: 'jenkins-slave', cloud: 'kubernetes', containers: [
+    containerTemplate(
+        name: 'jnlp', 
+        image: "${registry}/library/jenkins-slave-jdk:1.8"
+    ),
+  ],
+  volumes: [
+    hostPathVolume(mountPath: '/var/run/docker.sock', hostPath: '/var/run/docker.sock'),
+    hostPathVolume(mountPath: '/usr/bin/docker', hostPath: '/usr/bin/docker')
+  ],
+)
+{
+    node("jenkins-slave"){
+        stage('拉取代码') {
+            checkout([$class: 'GitSCM', branches: [[name: '${Branch}']], userRemoteConfigs: [[credentialsId: "${git_auth}", url: "${git_address}"]]])
+        }
+		stage('构建镜像'){
+		    sh "ls;docker build -t ${image_name} ."
+		}
+        stage('推送镜像'){
+			withCredentials([usernamePassword(credentialsId: "${docker_registry_auth}", passwordVariable: 'password', usernameVariable: 'username')]){
+			   sh """
+				   docker login -u ${username} -p '${password}' ${registry}
+				   docker push ${image_name}
+			   """
+			}
+        }
+        stage('部署到K8S平台'){
+            sh """
+                sed -i 's#\$IMAGE_NAME#${image_name}#' deploy.yml
+                sed -i 's#\$SECRET_NAME#${secret_name}#' deploy.yml
+            """
+            kubernetesDeploy configs: 'deploy.yml', kubeconfigId: "${k8s_auth}"
+        }
+        stage('合并代码') {
+            build job: 'common-merge-code', parameters: [gitParameter(name: 'sourceBranch', value: sourceBranch), string(name: 'targetBranch', value: targetBranch), string(name: 'git_address', value: "${git_address}")]
+        }
+    }
+}

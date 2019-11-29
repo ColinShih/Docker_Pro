@@ -17,23 +17,32 @@ spec:
       imagePullSecrets:
       - name: $SECRET_NAME 
       containers:
-      - name: tomcat 
+      - name: ng-php 
         image: $IMAGE_NAME 
+        imagePullPolicy: IfNotPresent
         ports:
         - containerPort: 8080
           name: ng-port
+          protocol: TCP
+        resources:
+          requests:
+            cpu: 0.25
+            memory: 256Mi
+          limits:
+            cpu: 1
+            memory: 1Gi
         livenessProbe:
           httpGet:
-            path: /
+            path: /index.html
             port: 8080
-          initialDelaySeconds: 60
+          initialDelaySeconds: 6
           timeoutSeconds: 5
           failureThreshold: 12
         readinessProbe:
           httpGet:
-            path: /
+            path: /index.html
             port: 8080
-          initialDelaySeconds: 60
+          initialDelaySeconds: 6
           timeoutSeconds: 5
           failureThreshold: 12
 
@@ -45,11 +54,12 @@ metadata:
   name: ng-php-wp
   namespace: php-test
 spec:
+  type: NodePort
   selector:
     app: nginx-php 
   ports:
     - protocol: TCP
-      port: 8001
+      port: 80
       targetPort: 8080
 
 ---
@@ -59,7 +69,7 @@ metadata:
   name: ng-php-wp-ing
   namespace: php-test
   annotations:
-     kubernetes.io/ingress.class: "ng-php"  
+     kubernetes.io/ingress.class: "nginx"
 spec:
   rules:
   - host: wp.colin.org
@@ -68,5 +78,4 @@ spec:
       - path: /
         backend:
           serviceName: ng-php-wp 
-          servicePort: 8001
-
+          servicePort: 80
