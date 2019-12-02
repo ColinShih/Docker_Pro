@@ -27,7 +27,7 @@ podTemplate(label: 'jenkins-slave', cloud: 'kubernetes', containers: [
         stage('拉取代码') {
             checkout([$class: 'GitSCM', branches: [[name: '${Branch}']], userRemoteConfigs: [[credentialsId: "${git_auth}", url: "${git_address}"]]])
         }
-		stage('构建镜像'){
+        stage('构建镜像'){
 		    sh "ls;docker build -t ${image_name} ."
 		}
         stage('推送镜像'){
